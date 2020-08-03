@@ -1,0 +1,218 @@
+-- select all columns from the first 10 rows 
+SELECT * 
+FROM survey
+LIMIT 10;
+-- What is the number of responses for each question?
+SELECT 
+  question, 
+  COUNT(*) as num_users
+FROM survey
+GROUP BY 1;
+-- create a query to filter question one and goup by response
+SELECT response,
+  COUNT(*) as num_users
+  FROM survey
+  WHERE question = '1. What are you looking for?'
+  GROUP BY 1
+  ORDER BY 2 DESC;
+-- create a query to filter question 4 and goup by response
+SELECT response,
+  COUNT(*) as num_users
+  FROM survey
+  WHERE question = '4. Which colors do you like?'
+  GROUP BY 1
+  ORDER BY 2 DESC;
+  -- create a query to filter question 3 and goup by response
+  SELECT response,
+   COUNT(*) as num_users
+  FROM survey
+  WHERE question = '3. Which shapes do you like?'
+  GROUP BY 1
+  ORDER BY 2 DESC;
+  -- create a query to filter question 5 and goup by response  
+  SELECT response,
+    COUNT(*) as num_users
+  FROM survey
+  WHERE question = '5. When was your last eye exam?'
+  GROUP BY 1
+  ORDER BY 2 DESC;
+-- quiz table 
+SELECT *
+FROM quiz
+LIMIT 5;
+-- home_try_on table 
+SELECT *
+FROM home_try_on
+LIMIT 5;
+-- purchase table 
+SELECT *
+FROM purchase
+LIMIT 5;
+-- query to group table quiz by style 
+SELECT 
+  style, COUNT(*) as num_user
+FROM quiz
+GROUP BY 1
+ORDER BY 2 DESC;
+
+-- calculate the funnel for three tabels 
+with browse as
+(SELECT DISTINCT q.user_id,
+h.user_id IS NOT NULL as 'is_home_try_on',
+h.number_of_pairs, 
+p.user_id IS NOT NULL as  'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id)
+
+SELECT 
+COUNT(*) as quiz_users,
+SUM(is_home_try_on) as try_on_users,
+SUM(is_purchase) as purchase_users
+FROM browse;
+-- calculate the difference between men and women style purchase sum 
+with browse as
+(SELECT DISTINCT q.user_id,
+p.style,
+h.user_id IS NOT NULL as 'is_home_try_on',
+h.number_of_pairs, 
+p.user_id IS NOT NULL as  'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id)
+
+SELECT style,
+SUM(is_purchase) as purchase_users
+FROM browse
+WHERE style IS NOT NULL
+GROUP BY 1;
+-- calculate the difference between 3 pairs and 5 pairs of glasses
+with browse as
+(SELECT DISTINCT q.user_id,
+h.user_id IS NOT NULL as 'is_home_try_on',
+h.number_of_pairs, 
+p.user_id IS NOT NULL as  'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id)
+
+-- as conversion_rate 
+SELECT 
+number_of_pairs,
+SUM(is_home_try_on) as try_on_users,
+SUM(is_purchase) as purchase_users
+FROM browse
+WHERE number_of_pairs IS NOT NULL
+GROUP BY 1;
+
+-- calculate the most common types, model name by purchase 
+with browse as
+(SELECT DISTINCT q.user_id,
+  p.style,
+  --p.price,
+  p.color, 
+  p.model_name,
+  h.user_id IS NOT NULL as 'is_home_try_on',
+  h.number_of_pairs, 
+  p.user_id IS NOT NULL as  'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id)
+
+SELECT 
+  model_name,
+  style,
+  color, 
+  --price,
+  SUM(is_purchase) as purchase_users
+FROM browse
+WHERE model_name IS NOT NULL
+GROUP BY 1;
+
+-- group  purchase by price 
+
+with browse as
+(SELECT DISTINCT q.user_id,
+p.model_name,
+h.number_of_pairs,
+p.price,
+h.user_id IS NOT NULL as 'is_home_try_on',
+h.number_of_pairs, 
+p.user_id IS NOT NULL as  'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id)
+
+SELECT price,
+SUM(is_purchase) as purchase_users
+FROM browse
+WHERE price IS NOT NULL
+GROUP BY 1;
+-- group by number of user who tried 3 or 5 pairs of glasses 
+With browse as
+  (SELECT DISTINCT q.user_id,
+    p.model_name,
+    h.number_of_pairs,
+    p.price,
+    h.user_id IS NOT NULL as 'is_home_try_on',
+    h.number_of_pairs, 
+    p.user_id IS NOT NULL as  'is_purchase' 
+  FROM quiz q
+  LEFT JOIN home_try_on h
+    ON q.user_id = h.user_id
+  LEFT JOIN purchase p
+    ON q.user_id = p.user_id),
+
+status as
+  (SELECT user_id, price, is_purchase,
+    CASE 
+      WHEN number_of_pairs = '5 pairs' THEN 1
+      ELSE 0
+    END as 'five_pairs', 
+    CASE 
+      WHEN number_of_pairs = '3 pairs' THEN 1
+      ELSE 0
+    END as 'three_pairs'
+  FROM browse)
+
+-- SELECT * FROM status LIMIT 20;
+SELECT price,
+  SUM(five_pairs) as user_five_pairs,
+  SUM(three_pairs) as user_three_pairs,
+  SUM(is_purchase) as purchase_users
+FROM status
+WHERE price IS NOT NULL
+GROUP BY 1;
+
+-- count the number of models 
+SELECT color, COUNT(*)
+FROM quiz
+GROUP BY color;
+-- analyse the 99 people who have no style 
+with browse as
+(SELECT DISTINCT q.user_id,
+p.style,
+h.user_id IS NOT NULL as 'is_home_try_on',
+h.number_of_pairs, 
+p.user_id IS NOT NULL as  'is_purchase' 
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id)
+
+SELECT style,
+COUNT(*)
+--SUM(is_purchase) as purchase_users
+FROM browse
+WHERE style = "I'm not sure. Let's skip it.";
